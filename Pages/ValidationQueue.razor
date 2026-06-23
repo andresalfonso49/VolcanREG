@@ -1,0 +1,160 @@
+@page "/validation"
+@inject RoleGuard RoleGuard
+@inject AuthService AuthService
+@inject FirebaseService FirebaseService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Validacion - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Administracion</span>
+            <h1>Validacion de cargues</h1>
+        </div>
+    </section>
+
+    <div class="tabs-line">
+        <button class="btn-secondary" @onclick="@(() => selectedStatus = ValidationStatuses.NotValidated)">Pendientes</button>
+        <button class="btn-secondary" @onclick="@(() => selectedStatus = ValidationStatuses.Validated)">Validados</button>
+        <button class="btn-secondary" @onclick="@(() => selectedStatus = ValidationStatuses.Incorrect)">Incorrectos</button>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Placa</th>
+                    <th>Conductor</th>
+                    <th>m3</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in FilteredRecords)
+                {
+                    <tr>
+                        <td>@item.LoadedAtLocal.ToString("g")</td>
+                        <td>@item.VehiclePlate</td>
+                        <td>@item.DriverName</td>
+                        <td>@item.VolumeM3.ToString("N2")</td>
+                        <td><ValidationStatusBadge Status="@item.ValidationStatus" /></td>
+                        <td class="row-actions">
+                            <button class="btn-ghost" @onclick="@(() => GoToDetail(item))">Detalle</button>
+                            <button class="btn-ghost" @onclick="@(() => GoToEdit(item))">Editar</button>
+                            <button class="btn-secondary" @onclick="@(() => MarkValidatedAsync(item))">Validar</button>
+                            <button class="btn-danger" @onclick="@(() => ShowIncorrect(item))">Incorrecto</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<ConfirmIncorrectModal Visible="showIncorrect"
+                       OnCancel="HideIncorrect"
+                       OnConfirm="ConfirmIncorrectAsync" />
+
+<LoadingOverlay Visible="@(!ready || isBusy)" Text="Guardando validacion..." />
+
+@code {
+    private IReadOnlyList<LoadRecord> records = [];
+    private string selectedStatus = ValidationStatuses.NotValidated;
+    private LoadRecord? selectedRecord;
+    private bool ready;
+    private bool isBusy;
+    private bool showIncorrect;
+
+    private IEnumerable<LoadRecord> FilteredRecords =>
+        records.Where(x => x.ValidationStatus == selectedStatus).OrderByDescending(x => x.LoadedAtLocal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Admin))
+        {
+            return;
+        }
+
+        await RefreshAsync();
+        ready = true;
+    }
+
+    private async Task RefreshAsync()
+    {
+        records = await FirebaseService.GetLoadRecordsAsync();
+    }
+
+    private async Task MarkValidatedAsync(LoadRecord record)
+    {
+        await ChangeValidationAsync(record, ValidationStatuses.Validated, null, null);
+    }
+
+    private void ShowIncorrect(LoadRecord record)
+    {
+        selectedRecord = record;
+        showIncorrect = true;
+    }
+
+    private void GoToDetail(LoadRecord record)
+    {
+        NavigationManager.NavigateTo($"/load/{record.ServerRecordId}");
+    }
+
+    private void GoToEdit(LoadRecord record)
+    {
+        NavigationManager.NavigateTo($"/edit-load/{record.ServerRecordId}");
+    }
+
+    private Task HideIncorrect()
+    {
+        showIncorrect = false;
+        selectedRecord = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmIncorrectAsync((string Reason, string? Notes) value)
+    {
+        if (selectedRecord is null)
+        {
+            return;
+        }
+
+        await ChangeValidationAsync(selectedRecord, ValidationStatuses.Incorrect, value.Reason, value.Notes);
+        showIncorrect = false;
+    }
+
+    private async Task ChangeValidationAsync(LoadRecord record, string newStatus, string? reason, string? notes)
+    {
+        isBusy = true;
+        var previous = record.ValidationStatus;
+        record.ValidationStatus = newStatus;
+        record.ValidatedByUserId = AuthService.Profile?.Uid;
+        record.ValidatedByUserName = AuthService.Profile?.DisplayName;
+        record.ValidatedAtUtc = DateTimeHelper.UtcNow();
+        record.ValidationNotes = notes;
+        record.IncorrectReason = newStatus == ValidationStatuses.Incorrect ? reason : null;
+        record.UpdatedAtUtc = DateTimeHelper.UtcNow();
+        record.UpdatedAtLocal = DateTimeHelper.LocalNow();
+
+        await FirebaseService.UpdateLoadRecordAsync(record);
+        await FirebaseService.CreateValidationLogAsync(new ValidationLog
+        {
+            Id = GuidHelper.NewId(),
+            LoadRecordId = record.ServerRecordId ?? record.ClientRecordId,
+            PreviousValidationStatus = previous,
+            NewValidationStatus = newStatus,
+            ChangedByUserId = AuthService.Profile?.Uid ?? string.Empty,
+            ChangedByUserName = AuthService.Profile?.DisplayName ?? string.Empty,
+            ChangedAtUtc = DateTimeHelper.UtcNow(),
+            Reason = reason,
+            Notes = notes
+        });
+
+        await RefreshAsync();
+        isBusy = false;
+    }
+}

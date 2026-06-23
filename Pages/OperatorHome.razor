@@ -1,0 +1,88 @@
+@page "/operator"
+@inject RoleGuard RoleGuard
+@inject AuthService AuthService
+@inject IndexedDbService IndexedDbService
+@inject SyncService SyncService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Operador - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Operacion</span>
+            <h1>Hola, @AuthService.Profile?.DisplayName</h1>
+        </div>
+        <ConnectionStatus />
+    </section>
+
+    <section class="operator-actions">
+        <article class="field-card">
+            <span>Registros pendientes</span>
+            <strong>@pendingCount</strong>
+        </article>
+        <article class="field-card">
+            <span>Ultima sincronizacion</span>
+            <strong>@(lastSyncUtc?.ToLocalTime().ToString("g") ?? "Sin datos")</strong>
+        </article>
+    </section>
+
+    <div class="action-stack">
+        <button class="btn-primary btn-block btn-with-icon" @onclick="GoToNewLoad"><NavIcon Name="reports" />Nuevo cargue</button>
+        <button class="btn-secondary btn-block btn-with-icon" @onclick="SyncNowAsync" disabled="@isSyncing"><NavIcon Name="sync" />Sincronizar ahora</button>
+        <button class="btn-ghost btn-block" @onclick="LogoutAsync">Cerrar sesion</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="notice">@message</p>
+    }
+}
+
+<LoadingOverlay Visible="@(!ready || isSyncing)" Text="Procesando..." />
+
+@code {
+    private bool ready;
+    private bool isSyncing;
+    private int pendingCount;
+    private DateTime? lastSyncUtc;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Operator))
+        {
+            return;
+        }
+
+        await RefreshAsync();
+        ready = true;
+    }
+
+    private async Task RefreshAsync()
+    {
+        pendingCount = await IndexedDbService.GetPendingCountAsync();
+        lastSyncUtc = await IndexedDbService.GetLastSyncUtcAsync();
+    }
+
+    private async Task SyncNowAsync()
+    {
+        isSyncing = true;
+        var count = await SyncService.SynchronizeAsync();
+        await RefreshAsync();
+        message = count == 0 ? "No habia registros para sincronizar o no hay conexion." : $"Se sincronizaron {count} registros.";
+        isSyncing = false;
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login", replace: true);
+    }
+
+    private void GoToNewLoad()
+    {
+        NavigationManager.NavigateTo("/new-load");
+    }
+}

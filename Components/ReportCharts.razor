@@ -1,0 +1,83 @@
+@inject ChartService ChartService
+
+@if (Records.Count > 0)
+{
+    <section class="chart-grid">
+        <div class="chart-panel">
+            <canvas id="@VolumeByDateId"></canvas>
+        </div>
+        <div class="chart-panel">
+            <canvas id="@LoadsByDateId"></canvas>
+        </div>
+        <div class="chart-panel">
+            <canvas id="@VolumeByStatusId"></canvas>
+        </div>
+        <div class="chart-panel">
+            <canvas id="@VolumeByOperatorId"></canvas>
+        </div>
+    </section>
+}
+else
+{
+    <p class="notice">Aun no hay registros para graficar.</p>
+}
+
+@if (Records.Count > 0 && !string.IsNullOrWhiteSpace(error))
+{
+    <p class="notice">@error</p>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<LoadRecord> Records { get; set; } = [];
+
+    [Parameter]
+    public string IdPrefix { get; set; } = "dashboard";
+
+    [Inject]
+    private ReportService ReportService { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        shouldRenderCharts = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!shouldRenderCharts)
+        {
+            return;
+        }
+
+        shouldRenderCharts = false;
+        await RenderAsync();
+    }
+
+    public async Task RenderAsync()
+    {
+        if (Records.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await ChartService.RenderLineAsync(VolumeByDateId, "m3 por dia", ReportService.VolumeByDate(Records));
+            await ChartService.RenderBarAsync(LoadsByDateId, "Registros por dia", ReportService.LoadsByDate(Records));
+            await ChartService.RenderBarAsync(VolumeByStatusId, "m3 por estado", ReportService.VolumeByValidationStatus(Records));
+            await ChartService.RenderBarAsync(VolumeByOperatorId, "m3 por operador", ReportService.VolumeByOperator(Records));
+        }
+        catch
+        {
+            error = "Los graficos no se pudieron cargar. Los datos y reportes siguen disponibles.";
+            StateHasChanged();
+        }
+    }
+
+    private string? error;
+    private bool shouldRenderCharts;
+    private string VolumeByDateId => $"{IdPrefix}-volumeByDate";
+    private string LoadsByDateId => $"{IdPrefix}-loadsByDate";
+    private string VolumeByStatusId => $"{IdPrefix}-volumeByStatus";
+    private string VolumeByOperatorId => $"{IdPrefix}-volumeByOperator";
+}

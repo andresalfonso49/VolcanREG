@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.log
+devserver.out.log
+devserver.err.log
+TestResults/
+publish/
+artifacts/

@@ -1,0 +1,67 @@
+@page "/history"
+@inject RoleGuard RoleGuard
+@inject AuthService AuthService
+@inject IndexedDbService IndexedDbService
+
+<PageTitle>Historial - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Operador</span>
+            <h1>Historial local</h1>
+        </div>
+    </section>
+
+    <label class="filter-inline">
+        Fecha
+        <InputDate class="form-control" @bind-Value="filterDate" />
+    </label>
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Placa</th>
+                    <th>m3</th>
+                    <th>Sync</th>
+                    <th>Validacion</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in FilteredRecords)
+                {
+                    <tr>
+                        <td>@item.LoadedAtLocal.ToString("g")</td>
+                        <td>@item.VehiclePlate</td>
+                        <td>@item.VolumeM3.ToString("N2")</td>
+                        <td><SyncStatusBadge Status="@item.SyncStatus" /></td>
+                        <td><ValidationStatusBadge Status="@item.ValidationStatus" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<LoadRecord> records = [];
+    private DateTime? filterDate;
+    private bool ready;
+
+    private IEnumerable<LoadRecord> FilteredRecords =>
+        filterDate is null ? records : records.Where(x => x.LoadedAtLocal.Date == filterDate.Value.Date);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Operator))
+        {
+            return;
+        }
+
+        records = await IndexedDbService.GetOperatorRecordsAsync(AuthService.Profile?.Uid ?? string.Empty);
+        ready = true;
+    }
+}

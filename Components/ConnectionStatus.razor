@@ -1,0 +1,45 @@
+@inject ConnectivityService ConnectivityService
+@implements IDisposable
+
+<span class="connection-pill @(isOnline ? "online" : "offline")">
+    @(isOnline ? "Online" : "Offline")
+</span>
+
+@code {
+    private bool isOnline;
+    private PeriodicTimer? timer;
+    private CancellationTokenSource? cancellationTokenSource;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isOnline = await ConnectivityService.IsOnlineAsync();
+        cancellationTokenSource = new CancellationTokenSource();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _ = WatchAsync(cancellationTokenSource.Token);
+    }
+
+    private async Task WatchAsync(CancellationToken cancellationToken)
+    {
+        if (timer is null)
+        {
+            return;
+        }
+
+        while (await timer.WaitForNextTickAsync(cancellationToken))
+        {
+            var current = await ConnectivityService.IsOnlineAsync();
+            if (current != isOnline)
+            {
+                isOnline = current;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        cancellationTokenSource?.Cancel();
+        timer?.Dispose();
+        cancellationTokenSource?.Dispose();
+    }
+}

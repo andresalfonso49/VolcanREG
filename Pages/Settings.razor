@@ -1,0 +1,148 @@
+@page "/settings"
+@inject AuthService AuthService
+@inject IndexedDbService IndexedDbService
+@inject FirebaseService FirebaseService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Configuracion - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">VolcanREG</span>
+            <h1>Configuracion</h1>
+        </div>
+        <ConnectionStatus />
+    </section>
+
+    <section class="detail-grid">
+        <div><span>Version</span><strong>0.1.0 MVP</strong></div>
+        <div><span>Usuario</span><strong>@AuthService.Profile?.DisplayName</strong></div>
+        <div><span>Email</span><strong>@AuthService.Profile?.Email</strong></div>
+        <div><span>Rol</span><strong>@AuthService.Profile?.Role</strong></div>
+        <div><span>DeviceId</span><strong>@deviceId</strong></div>
+    </section>
+
+    @if (AuthService.Profile?.IsAdmin == true)
+    {
+        <section class="danger-zone">
+            <div>
+                <span class="eyebrow">Administracion avanzada</span>
+                <h2>Reiniciar base de datos operativa</h2>
+                <p>
+                    Borra cargues, conductores, vehiculos, historiales y logs de sincronizacion.
+                    No borra usuarios; operadores y administradores se gestionan manualmente.
+                </p>
+            </div>
+
+            @if (!resetStarted)
+            {
+                <button class="btn-danger" type="button" @onclick="StartReset">Preparar reinicio</button>
+            }
+            else
+            {
+                <div class="reset-confirmation">
+                    <label>
+                        Para confirmar, resuelve: @resetA + @resetB
+                        <InputNumber class="form-control" @bind-Value="resetAnswer" />
+                    </label>
+                    <div class="row-actions">
+                        <button class="btn-ghost" type="button" @onclick="CancelReset">Cancelar</button>
+                        <button class="btn-danger" type="button" @onclick="ResetDatabaseAsync" disabled="@(!CanReset || isResetting)">
+                            Reiniciar base de datos
+                        </button>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(resetMessage))
+            {
+                <p class="notice">@resetMessage</p>
+            }
+        </section>
+    }
+
+    <section class="session-actions">
+        <button class="btn-ghost btn-block" @onclick="LogoutAsync">Cerrar sesion</button>
+    </section>
+}
+
+<LoadingOverlay Visible="@(!ready || isResetting)" Text="Procesando configuracion..." />
+
+@code {
+    private string deviceId = string.Empty;
+    private bool ready;
+    private bool resetStarted;
+    private bool isResetting;
+    private int resetA;
+    private int resetB;
+    private int? resetAnswer;
+    private string? resetMessage;
+
+    private bool CanReset => resetAnswer == resetA + resetB;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+        if (AuthService.Profile is null)
+        {
+            NavigationManager.NavigateTo("/login");
+            return;
+        }
+
+        deviceId = await IndexedDbService.GetDeviceIdAsync();
+        ready = true;
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login", replace: true);
+    }
+
+    private void StartReset()
+    {
+        var random = Random.Shared;
+        resetA = random.Next(3, 10);
+        resetB = random.Next(4, 12);
+        resetAnswer = null;
+        resetMessage = null;
+        resetStarted = true;
+    }
+
+    private void CancelReset()
+    {
+        resetStarted = false;
+        resetAnswer = null;
+        resetMessage = null;
+    }
+
+    private async Task ResetDatabaseAsync()
+    {
+        if (!CanReset)
+        {
+            resetMessage = "La respuesta no coincide.";
+            return;
+        }
+
+        isResetting = true;
+        resetMessage = null;
+
+        try
+        {
+            await FirebaseService.ResetOperationalDatabaseAsync();
+            resetMessage = "Base de datos operativa reiniciada. Los usuarios se conservaron.";
+            resetStarted = false;
+            resetAnswer = null;
+        }
+        catch (Exception ex)
+        {
+            resetMessage = $"No fue posible reiniciar la base de datos: {ex.Message}";
+        }
+        finally
+        {
+            isResetting = false;
+        }
+    }
+}

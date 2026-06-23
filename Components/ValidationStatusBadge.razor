@@ -1,0 +1,22 @@
+@using VolcanREG.Security
+
+<span class="status-pill @CssClass">@Label</span>
+
+@code {
+    [Parameter]
+    public string Status { get; set; } = ValidationStatuses.NotValidated;
+
+    private string Label => Status switch
+    {
+        ValidationStatuses.Validated => "Validado",
+        ValidationStatuses.Incorrect => "Incorrecto",
+        _ => "Pendiente"
+    };
+
+    private string CssClass => Status switch
+    {
+        ValidationStatuses.Validated => "status-ok",
+        ValidationStatuses.Incorrect => "status-danger",
+        _ => "status-info"
+    };
+}

@@ -1,0 +1,39 @@
+<section class="metric-grid">
+    <article class="metric-card">
+        <span>Total historico</span>
+        <strong>@Summary.TotalLoads</strong>
+    </article>
+    <article class="metric-card accent-blue">
+        <span>Pendientes</span>
+        <strong>@Summary.PendingValidation</strong>
+        <small>@Summary.PendingM3.ToString("N2") m3</small>
+    </article>
+    <article class="metric-card accent-green">
+        <span>Validados m3</span>
+        <strong>@Summary.Validated</strong>
+        <small>@Summary.ValidatedM3.ToString("N2") m3</small>
+    </article>
+    <article class="metric-card accent-red">
+        <span>Incorrectos m3</span>
+        <strong>@Summary.Incorrect</strong>
+        <small>@Summary.IncorrectM3.ToString("N2") m3</small>
+    </article>
+    <article class="metric-card accent-yellow">
+        <span>Validados + incorrectos</span>
+        <strong>@Summary.ReviewedM3.ToString("N2") m3</strong>
+        <small>Total revisado</small>
+    </article>
+    <article class="metric-card">
+        <span>% incorrectos</span>
+        <strong>@Summary.IncorrectPercentage.ToString("N2")%</strong>
+    </article>
+    <article class="metric-card">
+        <span>Promedio validado</span>
+        <strong>@Summary.AverageValidatedM3.ToString("N2") m3</strong>
+    </article>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public DashboardSummary Summary { get; set; } = new();
+}

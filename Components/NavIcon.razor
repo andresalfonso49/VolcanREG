@@ -1,0 +1,33 @@
+<span class="nav-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" focusable="false">
+        @switch (Name)
+        {
+            case "dashboard":
+                <path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z" />
+                break;
+            case "reports":
+                <path d="M6 3h9l3 3v15H6V3Zm8 1.8V7h2.2L14 4.8ZM8 9v2h8V9H8Zm0 4v2h8v-2H8Zm0 4v2h5v-2H8Z" />
+                break;
+            case "validation":
+                <path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm-1 14-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z" />
+                break;
+            case "users":
+                <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.3 0-6 1.7-6 3.8V20h12v-3.2C15 14.7 12.3 13 9 13Zm8.5-1.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 1.5c-.7 0-1.4.1-2 .3 1 .8 1.5 1.9 1.5 3.1V20h4v-2.7c0-1.8-1.6-3.3-3.5-3.3Z" />
+                break;
+            case "settings":
+                <path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2-1.5-2-3.5-2.4 1a8 8 0 0 0-2.6-1.5L14 2h-4l-.4 2.5A8 8 0 0 0 7 6L4.6 5l-2 3.5 2 1.5a8.5 8.5 0 0 0 0 3l-2 1.5 2 3.5L7 17a8 8 0 0 0 2.6 1.5L10 21h4l.4-2.5A8 8 0 0 0 17 17l2.4 1 2-3.5-2-1ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" />
+                break;
+            case "sync":
+                <path d="M7 7h8.2L13 4.8 14.4 3 19 7.6l-4.6 4.6L13 10.4 15.4 8H7V7Zm10 10H8.8l2.2 2.2L9.6 21 5 16.4l4.6-4.6L11 13.6 8.6 16H17v1Z" />
+                break;
+            default:
+                <path d="M4 4h16v16H4V4Zm2 2v12h12V6H6Z" />
+                break;
+        }
+    </svg>
+</span>
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+}

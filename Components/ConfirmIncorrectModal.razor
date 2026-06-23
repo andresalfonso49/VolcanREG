@@ -1,0 +1,70 @@
+@using VolcanREG.Security
+
+@if (Visible)
+{
+    <div class="modal-backdrop">
+        <div class="modal-panel">
+            <h2>Marcar como incorrecto</h2>
+            <label>
+                Motivo
+                <select class="form-control" @bind="Reason">
+                    <option value="">Selecciona un motivo</option>
+                    @foreach (var reason in IncorrectReasons.Suggested)
+                    {
+                        <option value="@reason">@reason</option>
+                    }
+                </select>
+            </label>
+            <label>
+                Observacion
+                <textarea class="form-control" rows="3" @bind="Notes"></textarea>
+            </label>
+            @if (!string.IsNullOrWhiteSpace(error))
+            {
+                <p class="form-error">@error</p>
+            }
+            <div class="modal-actions">
+                <button class="btn-secondary" type="button" @onclick="CancelAsync">Cancelar</button>
+                <button class="btn-danger" type="button" @onclick="ConfirmAsync">Confirmar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string? error;
+
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public string Reason { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Notes { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Reason, string? Notes)> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private async Task ConfirmAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Reason))
+        {
+            error = "El motivo es obligatorio.";
+            return;
+        }
+
+        await OnConfirm.InvokeAsync((Reason, Notes));
+    }
+
+    private async Task CancelAsync()
+    {
+        error = null;
+        Reason = string.Empty;
+        Notes = null;
+        await OnCancel.InvokeAsync();
+    }
+}

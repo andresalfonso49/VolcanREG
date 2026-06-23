@@ -1,0 +1,40 @@
+@page "/admin"
+@inject RoleGuard RoleGuard
+@inject FirebaseService FirebaseService
+@inject ReportService ReportService
+
+<PageTitle>Dashboard - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Administracion</span>
+            <h1>Dashboard</h1>
+        </div>
+        <ConnectionStatus />
+    </section>
+
+    <DashboardCards Summary="summary" />
+    <ReportCharts Records="records" />
+}
+
+<LoadingOverlay Visible="@(!ready)" Text="Cargando dashboard..." />
+
+@code {
+    private IReadOnlyList<LoadRecord> records = [];
+    private DashboardSummary summary = new();
+    private bool ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Admin))
+        {
+            return;
+        }
+
+        records = await FirebaseService.GetLoadRecordsAsync();
+        summary = ReportService.BuildSummary(records);
+        ready = true;
+    }
+}

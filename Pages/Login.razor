@@ -1,0 +1,97 @@
+@page "/login"
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Ingreso - VolcanREG</PageTitle>
+
+<section class="auth-shell">
+    <div class="auth-panel">
+        <h1>VolcanREG</h1>
+        <p>Registro offline de cargues de arena.</p>
+
+        <EditForm Model="loginModel" OnValidSubmit="LoginAsync" class="auth-form">
+            <DataAnnotationsValidator />
+            <label>
+                Email
+                <InputText class="form-control input-large" @bind-Value="loginModel.Email" />
+            </label>
+            <label>
+                Contrasena
+                <InputText type="password" class="form-control input-large" @bind-Value="loginModel.Password" />
+            </label>
+            @if (!string.IsNullOrWhiteSpace(error))
+            {
+                <p class="form-error">@error</p>
+            }
+            <button class="btn-primary btn-block" type="submit" disabled="@isBusy">Ingresar</button>
+        </EditForm>
+    </div>
+</section>
+
+<LoadingOverlay Visible="isBusy" Text="Ingresando..." />
+
+@code {
+    private readonly LoginModel loginModel = new();
+    private string? error;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+        if (AuthService.Profile is not null)
+        {
+            NavigationManager.NavigateTo(AuthService.Profile.IsAdmin ? "/admin" : "/operator", replace: true);
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        error = null;
+        isBusy = true;
+
+        try
+        {
+            await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
+            NavigationManager.NavigateTo(AuthService.Profile?.IsAdmin == true ? "/admin" : "/operator", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = FriendlyLoginError(ex.Message);
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private static string FriendlyLoginError(string message)
+    {
+        if (message.Contains("auth/invalid-credential", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("auth/wrong-password", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("auth/user-not-found", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Correo o contrasena incorrectos.";
+        }
+
+        if (message.Contains("auth/too-many-requests", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.";
+        }
+
+        if (message.Contains("auth/network-request-failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "No hay conexion con Firebase. Revisa internet e intenta otra vez.";
+        }
+
+        return "No fue posible iniciar sesion. Revisa tus datos e intenta de nuevo.";
+    }
+
+    private sealed class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

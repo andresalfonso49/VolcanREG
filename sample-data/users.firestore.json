@@ -1,0 +1,38 @@
+[
+  {
+    "uid": "xRy1uE9oj2htNyzxMTG5x8ZiOzt2",
+    "displayName": "Operador 1",
+    "email": "operador1@volcanreg.com",
+    "role": "Operator",
+    "isActive": true,
+    "createdAtUtc": "2026-06-22T00:00:00Z",
+    "updatedAtUtc": "2026-06-22T00:00:00Z"
+  },
+  {
+    "uid": "lxqtZcOHf3WC4mdw4o7bLrnlbug1",
+    "displayName": "Operador 2",
+    "email": "operador2@volcanreg.com",
+    "role": "Operator",
+    "isActive": true,
+    "createdAtUtc": "2026-06-22T00:00:00Z",
+    "updatedAtUtc": "2026-06-22T00:00:00Z"
+  },
+  {
+    "uid": "fB1zmolMHoX88KJ9m904mL1dpnM2",
+    "displayName": "Operador 3",
+    "email": "operador3@volcanreg.com",
+    "role": "Operator",
+    "isActive": true,
+    "createdAtUtc": "2026-06-22T00:00:00Z",
+    "updatedAtUtc": "2026-06-22T00:00:00Z"
+  },
+  {
+    "uid": "NDGRLffbnhcRBMDgH30dybc2sn52",
+    "displayName": "Administrador",
+    "email": "admin@volcanreg.com",
+    "role": "Admin",
+    "isActive": true,
+    "createdAtUtc": "2026-06-22T00:00:00Z",
+    "updatedAtUtc": "2026-06-22T00:00:00Z"
+  }
+]

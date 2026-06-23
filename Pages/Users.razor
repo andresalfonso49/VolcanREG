@@ -1,0 +1,246 @@
+@page "/users"
+@inject RoleGuard RoleGuard
+@inject FirebaseService FirebaseService
+
+<PageTitle>Usuarios - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Administracion</span>
+            <h1>Gestion de usuarios</h1>
+        </div>
+    </section>
+
+    <p class="notice">El admin puede crear cuentas, editar perfiles y activar o desactivar acceso. No uses llaves privadas dentro de la PWA.</p>
+
+    <section class="management-grid">
+        <div class="management-panel">
+            <h2>Crear usuario</h2>
+            <EditForm Model="createModel" OnValidSubmit="CreateAsync" class="auth-form">
+                <DataAnnotationsValidator />
+                <label>Nombre <InputText class="form-control" @bind-Value="createModel.DisplayName" /></label>
+                <label>Email <InputText class="form-control" @bind-Value="createModel.Email" /></label>
+                <label>Contrasena temporal <InputText type="password" class="form-control" @bind-Value="createModel.Password" /></label>
+                <label>
+                    Rol
+                    <InputSelect class="form-control" @bind-Value="createModel.Role">
+                        <option value="@AppRoles.Operator">Operator</option>
+                        <option value="@AppRoles.Admin">Admin</option>
+                    </InputSelect>
+                </label>
+                <label class="check-row">
+                    <InputCheckbox @bind-Value="createModel.IsActive" />
+                    Activo
+                </label>
+                <ValidationSummary />
+                <button class="btn-primary btn-block btn-with-icon" type="submit" disabled="@isBusy"><NavIcon Name="users" />Crear usuario</button>
+            </EditForm>
+        </div>
+
+        <div class="management-panel">
+            <h2>Editar usuario</h2>
+            @if (editModel is null)
+            {
+                <p class="notice">Selecciona un usuario de la tabla.</p>
+            }
+            else
+            {
+                <EditForm Model="editModel" OnValidSubmit="UpdateAsync" class="auth-form">
+                    <DataAnnotationsValidator />
+                    <label>Nombre <InputText class="form-control" @bind-Value="editModel.DisplayName" /></label>
+                    <label>Email <InputText class="form-control" @bind-Value="editModel.Email" disabled /></label>
+                    <label>
+                        Rol
+                        <InputSelect class="form-control" @bind-Value="editModel.Role">
+                            <option value="@AppRoles.Operator">Operator</option>
+                            <option value="@AppRoles.Admin">Admin</option>
+                        </InputSelect>
+                    </label>
+                    <label class="check-row">
+                        <InputCheckbox @bind-Value="editModel.IsActive" />
+                        Activo
+                    </label>
+                    <ValidationSummary />
+                    <button class="btn-primary btn-block btn-with-icon" type="submit" disabled="@isBusy"><NavIcon Name="settings" />Guardar cambios</button>
+                </EditForm>
+            }
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="notice">@message</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <p class="form-error">@error</p>
+    }
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Activo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>@user.DisplayName</td>
+                        <td>@user.Email</td>
+                        <td>@user.Role</td>
+                        <td>@(user.IsActive ? "Si" : "No")</td>
+                        <td class="row-actions">
+                            <button class="btn-secondary btn-with-icon" type="button" @onclick="@(() => SelectForEdit(user))"><NavIcon Name="settings" />Editar</button>
+                            <button class="btn-ghost" type="button" @onclick="@(() => ToggleActiveAsync(user))">
+                                @(user.IsActive ? "Deshabilitar" : "Activar")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<LoadingOverlay Visible="@(!ready || isBusy)" Text="Procesando usuarios..." />
+
+@code {
+    private IReadOnlyList<UserProfile> users = [];
+    private readonly CreateUserModel createModel = new();
+    private UserProfile? editModel;
+    private string? message;
+    private string? error;
+    private bool ready;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Admin))
+        {
+            return;
+        }
+
+        await RefreshAsync();
+        ready = true;
+    }
+
+    private async Task RefreshAsync()
+    {
+        users = (await FirebaseService.GetUsersAsync())
+            .OrderBy(x => x.Role)
+            .ThenBy(x => x.DisplayName)
+            .ToArray();
+    }
+
+    private async Task CreateAsync()
+    {
+        isBusy = true;
+        error = null;
+        message = null;
+
+        try
+        {
+            await FirebaseService.CreateUserAsync(
+                createModel.Email.Trim(),
+                createModel.Password,
+                createModel.DisplayName.Trim(),
+                createModel.Role,
+                createModel.IsActive);
+
+            createModel.DisplayName = string.Empty;
+            createModel.Email = string.Empty;
+            createModel.Password = string.Empty;
+            createModel.Role = AppRoles.Operator;
+            createModel.IsActive = true;
+            message = "Usuario creado correctamente.";
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private void SelectForEdit(UserProfile user)
+    {
+        editModel = new UserProfile
+        {
+            Uid = user.Uid,
+            DisplayName = user.DisplayName,
+            Email = user.Email,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            CreatedAtUtc = user.CreatedAtUtc,
+            UpdatedAtUtc = user.UpdatedAtUtc
+        };
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (editModel is null)
+        {
+            return;
+        }
+
+        isBusy = true;
+        error = null;
+        message = null;
+
+        try
+        {
+            await FirebaseService.UpdateUserProfileAsync(editModel);
+            message = "Usuario actualizado.";
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task ToggleActiveAsync(UserProfile user)
+    {
+        SelectForEdit(user);
+        if (editModel is null)
+        {
+            return;
+        }
+
+        editModel.IsActive = !user.IsActive;
+        await UpdateAsync();
+    }
+
+    private sealed class CreateUserModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string DisplayName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+
+        public string Role { get; set; } = AppRoles.Operator;
+        public bool IsActive { get; set; } = true;
+    }
+}

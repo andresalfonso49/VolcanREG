@@ -1,0 +1,107 @@
+@page "/reports"
+@inject RoleGuard RoleGuard
+@inject FirebaseService FirebaseService
+@inject ReportService ReportService
+@inject ExcelExportService ExcelExportService
+
+<PageTitle>Reportes - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Administracion</span>
+            <h1>Reportes</h1>
+        </div>
+        <button class="btn-primary btn-with-icon" @onclick="ExportAsync"><NavIcon Name="reports" />Exportar Excel</button>
+    </section>
+
+    <section class="filters-grid">
+        <label>Fecha inicial <InputDate class="form-control" @bind-Value="filters.StartDate" /></label>
+        <label>Fecha final <InputDate class="form-control" @bind-Value="filters.EndDate" /></label>
+        <label>Placa <InputText class="form-control" @bind-Value="filters.VehiclePlate" /></label>
+        <label>Conductor <InputText class="form-control" @bind-Value="filters.DriverCcOrName" /></label>
+        <label>Cliente <InputText class="form-control" @bind-Value="filters.CustomerName" /></label>
+        <label>
+            Estado
+            <InputSelect class="form-control" @bind-Value="filters.ValidationStatus">
+                <option value="All">Todos</option>
+                <option value="@ValidationStatuses.NotValidated">Pendientes</option>
+                <option value="@ValidationStatuses.Validated">Validados</option>
+                <option value="@ValidationStatuses.Incorrect">Incorrectos</option>
+            </InputSelect>
+        </label>
+    </section>
+
+    <div class="tabs-line">
+        <button class="btn-secondary" @onclick="@(() => filters.ValidationStatus = ValidationStatuses.Validated)">Final oficial</button>
+        <button class="btn-secondary" @onclick="@(() => filters.ValidationStatus = ValidationStatuses.NotValidated)">Pendientes</button>
+        <button class="btn-secondary" @onclick="@(() => filters.ValidationStatus = ValidationStatuses.Incorrect)">Incorrectos</button>
+        <button class="btn-secondary" @onclick="ShowAllStatuses">Historico</button>
+    </div>
+
+    <DashboardCards Summary="@ReportService.BuildSummary(FilteredRecords)" />
+
+    <ReportCharts Records="FilteredRecords" IdPrefix="reports" />
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Operador</th>
+                    <th>Placa</th>
+                    <th>Conductor</th>
+                    <th>Cliente</th>
+                    <th>m3</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in FilteredRecords)
+                {
+                    <tr>
+                        <td>@item.LoadedAtLocal.ToString("g")</td>
+                        <td>@item.OperatorNameSnapshot</td>
+                        <td>@item.VehiclePlate</td>
+                        <td>@item.DriverName</td>
+                        <td>@item.CustomerName</td>
+                        <td>@item.VolumeM3.ToString("N2")</td>
+                        <td><ValidationStatusBadge Status="@item.ValidationStatus" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<LoadingOverlay Visible="@(!ready)" Text="Cargando reportes..." />
+
+@code {
+    private IReadOnlyList<LoadRecord> records = [];
+    private readonly ReportFilters filters = new();
+    private bool ready;
+
+    private IReadOnlyList<LoadRecord> FilteredRecords => ReportService.ApplyFilters(records, filters);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Admin))
+        {
+            return;
+        }
+
+        records = await FirebaseService.GetLoadRecordsAsync();
+        ready = true;
+    }
+
+    private async Task ExportAsync()
+    {
+        await ExcelExportService.ExportAsync(FilteredRecords);
+    }
+
+    private void ShowAllStatuses()
+    {
+        filters.ValidationStatus = "All";
+    }
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "clientRecordId": "demo-validated-001",
+    "loadedAtLocal": "2026-06-22T08:10:00",
+    "loadedAtUtc": "2026-06-22T13:10:00Z",
+    "operatorId": "UID_OPERADOR_1",
+    "operatorNameSnapshot": "Operador 1",
+    "material": "Arena",
+    "volumeM3": 12.5,
+    "vehiclePlate": "ABC123",
+    "driverName": "Carlos Perez",
+    "driverCc": "123456789",
+    "customerName": "Cliente demo",
+    "validationStatus": "Validated",
+    "deviceId": "demo-device",
+    "createdAtUtc": "2026-06-22T13:10:00Z",
+    "updatedAtUtc": "2026-06-22T13:30:00Z",
+    "syncedAtUtc": "2026-06-22T13:11:00Z"
+  },
+  {
+    "clientRecordId": "demo-pending-001",
+    "loadedAtLocal": "2026-06-22T09:20:00",
+    "loadedAtUtc": "2026-06-22T14:20:00Z",
+    "operatorId": "UID_OPERADOR_2",
+    "operatorNameSnapshot": "Operador 2",
+    "material": "Arena",
+    "volumeM3": 10,
+    "vehiclePlate": "DEF456",
+    "driverName": "Ana Gomez",
+    "driverCc": "987654321",
+    "validationStatus": "NotValidated",
+    "deviceId": "demo-device",
+    "createdAtUtc": "2026-06-22T14:20:00Z",
+    "syncedAtUtc": "2026-06-22T14:21:00Z"
+  }
+]

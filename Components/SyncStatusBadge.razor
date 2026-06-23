@@ -1,0 +1,16 @@
+@using VolcanREG.Security
+
+<span class="status-pill @CssClass">@Status</span>
+
+@code {
+    [Parameter]
+    public string Status { get; set; } = SyncStatuses.Pending;
+
+    private string CssClass => Status switch
+    {
+        SyncStatuses.Synced => "status-ok",
+        SyncStatuses.Syncing => "status-info",
+        SyncStatuses.Error => "status-danger",
+        _ => "status-warn"
+    };
+}

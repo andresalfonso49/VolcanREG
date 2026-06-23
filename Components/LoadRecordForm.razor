@@ -1,0 +1,120 @@
+@using VolcanREG.Helpers
+
+<EditForm Model="Record" OnValidSubmit="SubmitAsync" class="load-form">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <label>
+        Cantidad m3
+        <InputNumber class="form-control input-large" @bind-Value="Record.VolumeM3" />
+        <ValidationMessage For="@(() => Record.VolumeM3)" />
+    </label>
+
+    <label>
+        Placa
+        <InputText class="form-control input-large" list="vehicleOptions" @bind-Value="Record.VehiclePlate" @oninput="OnPlateInput" @onblur="NormalizePlate" />
+        <datalist id="vehicleOptions">
+            @foreach (var vehicle in Vehicles)
+            {
+                <option value="@vehicle.VehiclePlate">@vehicle.LastDriverName</option>
+            }
+        </datalist>
+        <ValidationMessage For="@(() => Record.VehiclePlate)" />
+    </label>
+
+    <label>
+        Cedula conductor
+        <InputText class="form-control input-large" list="driverCcOptions" @bind-Value="Record.DriverCc" @oninput="OnDriverCcInput" @onblur="AutofillDriver" />
+        <datalist id="driverCcOptions">
+            @foreach (var driver in Drivers)
+            {
+                <option value="@driver.DriverCc">@driver.DriverName</option>
+            }
+        </datalist>
+        <ValidationMessage For="@(() => Record.DriverCc)" />
+    </label>
+
+    <label>
+        Nombre conductor
+        <InputText class="form-control input-large" list="driverNameOptions" @bind-Value="Record.DriverName" />
+        <datalist id="driverNameOptions">
+            @foreach (var driver in Drivers)
+            {
+                <option value="@driver.DriverName">@driver.DriverCc</option>
+            }
+        </datalist>
+        <ValidationMessage For="@(() => Record.DriverName)" />
+    </label>
+
+    <label>
+        Cliente
+        <InputText class="form-control input-large" @bind-Value="Record.CustomerName" />
+    </label>
+
+    <label>
+        Observaciones
+        <InputTextArea class="form-control" rows="3" @bind-Value="Record.Observations" />
+    </label>
+
+    <button class="btn-primary btn-block" type="submit">@SubmitText</button>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired]
+    public LoadRecord Record { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<Driver> Drivers { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Vehicle> Vehicles { get; set; } = [];
+
+    [Parameter]
+    public string SubmitText { get; set; } = "Guardar cargue";
+
+    [Parameter]
+    public EventCallback<LoadRecord> OnSubmit { get; set; }
+
+    private async Task SubmitAsync()
+    {
+        Record.VehiclePlate = PlateValidator.Normalize(Record.VehiclePlate);
+        await OnSubmit.InvokeAsync(Record);
+    }
+
+    private void NormalizePlate()
+    {
+        Record.VehiclePlate = PlateValidator.Normalize(Record.VehiclePlate);
+        AutofillVehicle();
+    }
+
+    private void OnPlateInput(ChangeEventArgs args)
+    {
+        Record.VehiclePlate = PlateValidator.Normalize(args.Value?.ToString());
+        AutofillVehicle();
+    }
+
+    private void AutofillVehicle()
+    {
+        var vehicle = Vehicles.FirstOrDefault(x => x.VehiclePlate.Equals(Record.VehiclePlate, StringComparison.OrdinalIgnoreCase));
+        if (vehicle is not null)
+        {
+            Record.DriverCc = string.IsNullOrWhiteSpace(Record.DriverCc) ? vehicle.LastDriverCc ?? string.Empty : Record.DriverCc;
+            Record.DriverName = string.IsNullOrWhiteSpace(Record.DriverName) ? vehicle.LastDriverName ?? string.Empty : Record.DriverName;
+        }
+    }
+
+    private void OnDriverCcInput(ChangeEventArgs args)
+    {
+        Record.DriverCc = args.Value?.ToString() ?? string.Empty;
+        AutofillDriver();
+    }
+
+    private void AutofillDriver()
+    {
+        var driver = Drivers.FirstOrDefault(x => x.DriverCc == Record.DriverCc);
+        if (driver is not null)
+        {
+            Record.DriverName = driver.DriverName;
+        }
+    }
+}

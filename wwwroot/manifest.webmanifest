@@ -1,0 +1,23 @@
+{
+  "name": "VolcanREG",
+  "short_name": "VolcanREG",
+  "description": "Registro offline-first de cargues de arena para operadores y administradores.",
+  "id": "./",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f5ef",
+  "theme_color": "#d6a11f",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+@inject IndexedDbService IndexedDbService
+@inject SyncService SyncService
+@implements IDisposable
+
+<span class="pending-pill">@pending pendientes</span>
+
+@code {
+    private int pending;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SyncService.SyncStateChanged += OnSyncStateChanged;
+        await RefreshAsync();
+    }
+
+    private async void OnSyncStateChanged()
+    {
+        await InvokeAsync(RefreshAsync);
+    }
+
+    private async Task RefreshAsync()
+    {
+        pending = await IndexedDbService.GetPendingCountAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        SyncService.SyncStateChanged -= OnSyncStateChanged;
+    }
+}

@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject AuthService AuthService
+@inject SyncService SyncService
+
+<div class="page">
+    <aside class="sidebar">
+        <AppNav />
+    </aside>
+
+    <main>
+        <div class="top-bar">
+            <div class="top-bar-status">
+                <ConnectionStatus />
+                <PendingSyncBadge />
+            </div>
+            <div class="top-bar-user">
+                @(AuthService.Profile?.DisplayName ?? "VolcanREG")
+            </div>
+        </div>
+
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private PeriodicTimer? syncTimer;
+    private CancellationTokenSource? cancellationTokenSource;
+
+    protected override void OnInitialized()
+    {
+        cancellationTokenSource = new CancellationTokenSource();
+        syncTimer = new PeriodicTimer(TimeSpan.FromMinutes(2));
+        _ = AutoSyncAsync(cancellationTokenSource.Token);
+    }
+
+    private async Task AutoSyncAsync(CancellationToken cancellationToken)
+    {
+        await TrySyncAsync();
+
+        if (syncTimer is null)
+        {
+            return;
+        }
+
+        while (await syncTimer.WaitForNextTickAsync(cancellationToken))
+        {
+            await TrySyncAsync();
+        }
+    }
+
+    private async Task TrySyncAsync()
+    {
+        try
+        {
+            await SyncService.SynchronizeAsync();
+        }
+        catch
+        {
+            // Auto-sync is intentionally quiet; local records retain their error state.
+        }
+    }
+
+    public void Dispose()
+    {
+        cancellationTokenSource?.Cancel();
+        syncTimer?.Dispose();
+        cancellationTokenSource?.Dispose();
+    }
+}

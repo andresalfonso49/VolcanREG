@@ -1,0 +1,60 @@
+@implements IDisposable
+@inject AuthService AuthService
+
+<div class="nav-brand">
+    <a class="brand-link" href="">VolcanREG</a>
+    <button title="Menu" class="nav-toggle" @onclick="ToggleNavMenu">
+        <span></span>
+    </button>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="app-nav">
+        @if (AuthService.Profile is null)
+        {
+            <NavLink class="nav-link" href="login"><NavIcon Name="users" />Ingresar</NavLink>
+        }
+        else if (AuthService.Profile.IsAdmin)
+        {
+            <NavLink class="nav-link" href="admin"><NavIcon Name="dashboard" />Dashboard</NavLink>
+            <NavLink class="nav-link" href="reports"><NavIcon Name="reports" />Reportes</NavLink>
+            <NavLink class="nav-link" href="validation"><NavIcon Name="validation" />Validacion</NavLink>
+            <NavLink class="nav-link" href="users"><NavIcon Name="users" />Operadores</NavLink>
+            <NavLink class="nav-link" href="settings"><NavIcon Name="settings" />Configuracion</NavLink>
+        }
+        else
+        {
+            <NavLink class="nav-link" href="operator"><NavIcon Name="dashboard" />Inicio</NavLink>
+            <NavLink class="nav-link" href="new-load"><NavIcon Name="reports" />Nuevo cargue</NavLink>
+            <NavLink class="nav-link" href="pending-sync"><NavIcon Name="sync" />Pendientes</NavLink>
+            <NavLink class="nav-link" href="history"><NavIcon Name="validation" />Historial</NavLink>
+            <NavLink class="nav-link" href="settings"><NavIcon Name="settings" />Configuracion</NavLink>
+        }
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override void OnInitialized()
+    {
+        AuthService.AuthStateChanged += OnAuthStateChanged;
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void OnAuthStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthStateChanged -= OnAuthStateChanged;
+    }
+}

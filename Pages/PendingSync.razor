@@ -1,0 +1,77 @@
+@page "/pending-sync"
+@inject RoleGuard RoleGuard
+@inject IndexedDbService IndexedDbService
+@inject SyncService SyncService
+
+<PageTitle>Pendientes - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Sincronizacion</span>
+            <h1>Registros pendientes</h1>
+        </div>
+        <button class="btn-primary btn-with-icon" @onclick="SyncNowAsync"><NavIcon Name="sync" />Sincronizar</button>
+    </section>
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Placa</th>
+                    <th>m3</th>
+                    <th>Conductor</th>
+                    <th>Estado</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in records)
+                {
+                    <tr>
+                        <td>@item.LoadedAtLocal.ToString("g")</td>
+                        <td>@item.VehiclePlate</td>
+                        <td>@item.VolumeM3.ToString("N2")</td>
+                        <td>@item.DriverName</td>
+                        <td><SyncStatusBadge Status="@item.SyncStatus" /></td>
+                        <td>@item.LastSyncError</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<LoadingOverlay Visible="@(!ready || isBusy)" Text="Sincronizando..." />
+
+@code {
+    private IReadOnlyList<LoadRecord> records = [];
+    private bool ready;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Operator))
+        {
+            return;
+        }
+
+        await RefreshAsync();
+        ready = true;
+    }
+
+    private async Task RefreshAsync()
+    {
+        records = await IndexedDbService.GetRecordsForSyncAsync();
+    }
+
+    private async Task SyncNowAsync()
+    {
+        isBusy = true;
+        await SyncService.SynchronizeAsync();
+        await RefreshAsync();
+        isBusy = false;
+    }
+}

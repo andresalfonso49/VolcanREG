@@ -1,0 +1,23 @@
+﻿@page "/"
+
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>VolcanREG</PageTitle>
+
+<LoadingOverlay Visible="true" Text="Preparando VolcanREG..." />
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+
+        if (AuthService.Profile is null)
+        {
+            NavigationManager.NavigateTo("/login", replace: true);
+            return;
+        }
+
+        NavigationManager.NavigateTo(AuthService.Profile.IsAdmin ? "/admin" : "/operator", replace: true);
+    }
+}

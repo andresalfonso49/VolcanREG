@@ -1,0 +1,142 @@
+@page "/edit-load/{Id}"
+@inject RoleGuard RoleGuard
+@inject AuthService AuthService
+@inject FirebaseService FirebaseService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Editar cargue - VolcanREG</PageTitle>
+
+@if (record is not null)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Administracion</span>
+            <h1>Editar cargue</h1>
+        </div>
+    </section>
+
+    <LoadRecordForm Record="record"
+                    SubmitText="Guardar cambios"
+                    OnSubmit="SaveAsync" />
+
+    <label>
+        Motivo de edicion
+        <InputTextArea class="form-control" rows="3" @bind-Value="reason" />
+    </label>
+}
+
+<LoadingOverlay Visible="@(record is null || isBusy)" Text="Guardando..." />
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private LoadRecord? record;
+    private LoadRecord? original;
+    private string? reason;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Admin))
+        {
+            return;
+        }
+
+        record = await FirebaseService.GetLoadRecordAsync(Id);
+        original = Clone(record);
+    }
+
+    private async Task SaveAsync(LoadRecord value)
+    {
+        if (original is null)
+        {
+            return;
+        }
+
+        isBusy = true;
+        value.UpdatedAtLocal = DateTimeHelper.LocalNow();
+        value.UpdatedAtUtc = DateTimeHelper.UtcNow();
+
+        var logs = BuildLogs(original, value).ToArray();
+        await FirebaseService.UpdateLoadRecordAsync(value);
+        if (logs.Length > 0)
+        {
+            await FirebaseService.CreateEditLogsAsync(logs);
+        }
+
+        NavigationManager.NavigateTo($"/load/{Id}");
+        isBusy = false;
+    }
+
+    private IEnumerable<EditLog> BuildLogs(LoadRecord before, LoadRecord after)
+    {
+        foreach (var change in Changes(before, after))
+        {
+            yield return new EditLog
+            {
+                Id = GuidHelper.NewId(),
+                LoadRecordId = after.ServerRecordId ?? after.ClientRecordId,
+                EditedByUserId = AuthService.Profile?.Uid ?? string.Empty,
+                EditedByUserName = AuthService.Profile?.DisplayName ?? string.Empty,
+                EditedAtUtc = DateTimeHelper.UtcNow(),
+                FieldName = change.Field,
+                OldValue = change.OldValue,
+                NewValue = change.NewValue,
+                Reason = reason
+            };
+        }
+    }
+
+    private static IEnumerable<(string Field, string? OldValue, string? NewValue)> Changes(LoadRecord before, LoadRecord after)
+    {
+        if (before.VolumeM3 != after.VolumeM3) yield return ("VolumeM3", before.VolumeM3.ToString(), after.VolumeM3.ToString());
+        if (before.VehiclePlate != after.VehiclePlate) yield return ("VehiclePlate", before.VehiclePlate, after.VehiclePlate);
+        if (before.DriverName != after.DriverName) yield return ("DriverName", before.DriverName, after.DriverName);
+        if (before.DriverCc != after.DriverCc) yield return ("DriverCc", before.DriverCc, after.DriverCc);
+        if (before.CustomerName != after.CustomerName) yield return ("CustomerName", before.CustomerName, after.CustomerName);
+        if (before.Observations != after.Observations) yield return ("Observations", before.Observations, after.Observations);
+    }
+
+    private static LoadRecord? Clone(LoadRecord? source)
+    {
+        if (source is null)
+        {
+            return null;
+        }
+
+        return new LoadRecord
+        {
+            LocalId = source.LocalId,
+            ClientRecordId = source.ClientRecordId,
+            ServerRecordId = source.ServerRecordId,
+            LoadedAtLocal = source.LoadedAtLocal,
+            LoadedAtUtc = source.LoadedAtUtc,
+            OperatorId = source.OperatorId,
+            OperatorNameSnapshot = source.OperatorNameSnapshot,
+            Material = source.Material,
+            VolumeM3 = source.VolumeM3,
+            VehiclePlate = source.VehiclePlate,
+            DriverName = source.DriverName,
+            DriverCc = source.DriverCc,
+            CustomerName = source.CustomerName,
+            Latitude = source.Latitude,
+            Longitude = source.Longitude,
+            PhotoBase64 = source.PhotoBase64,
+            Observations = source.Observations,
+            SyncStatus = source.SyncStatus,
+            ValidationStatus = source.ValidationStatus,
+            ValidatedByUserId = source.ValidatedByUserId,
+            ValidatedByUserName = source.ValidatedByUserName,
+            ValidatedAtUtc = source.ValidatedAtUtc,
+            ValidationNotes = source.ValidationNotes,
+            IncorrectReason = source.IncorrectReason,
+            CreatedAtLocal = source.CreatedAtLocal,
+            CreatedAtUtc = source.CreatedAtUtc,
+            UpdatedAtLocal = source.UpdatedAtLocal,
+            UpdatedAtUtc = source.UpdatedAtUtc,
+            SyncedAtUtc = source.SyncedAtUtc,
+            DeviceId = source.DeviceId
+        };
+    }
+}

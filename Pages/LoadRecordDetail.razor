@@ -1,0 +1,80 @@
+@page "/load/{Id}"
+@inject RoleGuard RoleGuard
+@inject FirebaseService FirebaseService
+
+<PageTitle>Detalle - VolcanREG</PageTitle>
+
+@if (record is not null)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Detalle</span>
+            <h1>@record.VehiclePlate</h1>
+        </div>
+        <ValidationStatusBadge Status="@record.ValidationStatus" />
+    </section>
+
+    <section class="detail-grid">
+        <div><span>Fecha</span><strong>@record.LoadedAtLocal.ToString("g")</strong></div>
+        <div><span>Operador</span><strong>@record.OperatorNameSnapshot</strong></div>
+        <div><span>Volumen</span><strong>@record.VolumeM3.ToString("N2") m3</strong></div>
+        <div><span>Conductor</span><strong>@record.DriverName</strong></div>
+        <div><span>Cedula</span><strong>@record.DriverCc</strong></div>
+        <div><span>Cliente</span><strong>@record.CustomerName</strong></div>
+        <div><span>GPS</span><strong>@GpsText</strong></div>
+        <div><span>Sync</span><strong>@record.SyncStatus</strong></div>
+        <div><span>Observaciones</span><strong>@record.Observations</strong></div>
+        <div><span>Motivo incorrecto</span><strong>@record.IncorrectReason</strong></div>
+    </section>
+
+    <h2>Historial de ediciones</h2>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Usuario</th><th>Campo</th><th>Anterior</th><th>Nuevo</th><th>Motivo</th></tr></thead>
+            <tbody>
+                @foreach (var log in editLogs)
+                {
+                    <tr><td>@log.EditedAtUtc.ToLocalTime().ToString("g")</td><td>@log.EditedByUserName</td><td>@log.FieldName</td><td>@log.OldValue</td><td>@log.NewValue</td><td>@log.Reason</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Historial de validacion</h2>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Usuario</th><th>Anterior</th><th>Nuevo</th><th>Motivo</th><th>Notas</th></tr></thead>
+            <tbody>
+                @foreach (var log in validationLogs)
+                {
+                    <tr><td>@log.ChangedAtUtc.ToLocalTime().ToString("g")</td><td>@log.ChangedByUserName</td><td>@log.PreviousValidationStatus</td><td>@log.NewValidationStatus</td><td>@log.Reason</td><td>@log.Notes</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<LoadingOverlay Visible="@(record is null)" Text="Cargando detalle..." />
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private LoadRecord? record;
+    private IReadOnlyList<EditLog> editLogs = [];
+    private IReadOnlyList<ValidationLog> validationLogs = [];
+
+    private string GpsText => record?.Latitude is null ? "No disponible" : $"{record.Latitude}, {record.Longitude}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Admin))
+        {
+            return;
+        }
+
+        record = await FirebaseService.GetLoadRecordAsync(Id);
+        editLogs = await FirebaseService.GetEditLogsAsync(Id);
+        validationLogs = await FirebaseService.GetValidationLogsAsync(Id);
+    }
+}

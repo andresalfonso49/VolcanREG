@@ -1,0 +1,132 @@
+@page "/new-load"
+@inject RoleGuard RoleGuard
+@inject AuthService AuthService
+@inject IndexedDbService IndexedDbService
+@inject FirebaseService FirebaseService
+@inject GeolocationService GeolocationService
+@inject ConnectivityService ConnectivityService
+@inject SyncService SyncService
+
+<PageTitle>Nuevo cargue - VolcanREG</PageTitle>
+
+@if (ready)
+{
+    <section class="screen-header">
+        <div>
+            <span class="eyebrow">Registro en campo</span>
+            <h1>Nuevo cargue</h1>
+        </div>
+        <ConnectionStatus />
+    </section>
+
+    <LoadRecordForm Record="record"
+                    Drivers="drivers"
+                    Vehicles="vehicles"
+                    OnSubmit="SaveAsync" />
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="notice">@message</p>
+    }
+}
+
+<LoadingOverlay Visible="@(!ready || isBusy)" Text="Guardando..." />
+
+@code {
+    private LoadRecord record = new();
+    private IReadOnlyList<Driver> drivers = [];
+    private IReadOnlyList<Vehicle> vehicles = [];
+    private bool ready;
+    private bool isBusy;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await RoleGuard.RequireRoleAsync(AppRoles.Operator))
+        {
+            return;
+        }
+
+        await LoadLocalCatalogsAsync();
+        await ResetRecordAsync();
+        ready = true;
+    }
+
+    private async Task LoadLocalCatalogsAsync()
+    {
+        var localDrivers = await IndexedDbService.GetDriversAsync();
+        var localVehicles = await IndexedDbService.GetVehiclesAsync();
+
+        if (await ConnectivityService.IsOnlineAsync())
+        {
+            try
+            {
+                var remoteDrivers = await FirebaseService.GetDriversAsync();
+                var remoteVehicles = await FirebaseService.GetVehiclesAsync();
+
+                drivers = localDrivers.Concat(remoteDrivers)
+                    .GroupBy(x => x.DriverCc)
+                    .Select(x => x.OrderByDescending(y => y.UpdatedAtUtc).First())
+                    .OrderBy(x => x.DriverName)
+                    .ToArray();
+
+                vehicles = localVehicles.Concat(remoteVehicles)
+                    .GroupBy(x => x.VehiclePlate)
+                    .Select(x => x.OrderByDescending(y => y.UpdatedAtUtc).First())
+                    .OrderBy(x => x.VehiclePlate)
+                    .ToArray();
+
+                return;
+            }
+            catch
+            {
+                // Offline-first: local suggestions are enough if remote catalogs cannot be read.
+            }
+        }
+
+        drivers = localDrivers.OrderBy(x => x.DriverName).ToArray();
+        vehicles = localVehicles.OrderBy(x => x.VehiclePlate).ToArray();
+    }
+
+    private async Task ResetRecordAsync()
+    {
+        var nowLocal = DateTimeHelper.LocalNow();
+        var nowUtc = DateTimeHelper.UtcNow();
+        var location = await GeolocationService.TryGetLocationAsync();
+
+        record = new LoadRecord
+        {
+            LoadedAtLocal = nowLocal,
+            LoadedAtUtc = nowUtc,
+            CreatedAtLocal = nowLocal,
+            CreatedAtUtc = nowUtc,
+            OperatorId = AuthService.Profile?.Uid ?? string.Empty,
+            OperatorNameSnapshot = AuthService.Profile?.DisplayName ?? string.Empty,
+            DeviceId = await IndexedDbService.GetDeviceIdAsync(),
+            Latitude = location.Latitude,
+            Longitude = location.Longitude
+        };
+    }
+
+    private async Task SaveAsync(LoadRecord value)
+    {
+        isBusy = true;
+        value.VehiclePlate = PlateValidator.Normalize(value.VehiclePlate);
+        await IndexedDbService.SaveLoadRecordAsync(value);
+        await IndexedDbService.SaveRecentDriverAndVehicleAsync(value);
+
+        if (await ConnectivityService.IsOnlineAsync())
+        {
+            await SyncService.SynchronizeAsync();
+            message = "Cargue guardado correctamente.";
+        }
+        else
+        {
+            message = "Cargue guardado localmente. Se sincronizara automaticamente cuando haya conexion.";
+        }
+
+        await LoadLocalCatalogsAsync();
+        await ResetRecordAsync();
+        isBusy = false;
+    }
+}
