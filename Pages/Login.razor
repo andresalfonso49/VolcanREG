@@ -40,7 +40,7 @@
         await AuthService.InitializeAsync();
         if (AuthService.Profile is not null)
         {
-            NavigationManager.NavigateTo(AuthService.Profile.IsAdmin ? "/admin" : "/operator", replace: true);
+            NavigationManager.NavigateTo(AuthService.Profile.IsAdmin ? "admin" : "operator", replace: true);
         }
     }
 
@@ -52,7 +52,7 @@
         try
         {
             await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
-            NavigationManager.NavigateTo(AuthService.Profile?.IsAdmin == true ? "/admin" : "/operator", replace: true);
+            NavigationManager.NavigateTo(AuthService.Profile?.IsAdmin == true ? "admin" : "operator", replace: true);
         }
         catch (Exception ex)
         {

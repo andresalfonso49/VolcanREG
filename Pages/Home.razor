@@ -14,10 +14,10 @@
 
         if (AuthService.Profile is null)
         {
-            NavigationManager.NavigateTo("/login", replace: true);
+            NavigationManager.NavigateTo("login", replace: true);
             return;
         }
 
-        NavigationManager.NavigateTo(AuthService.Profile.IsAdmin ? "/admin" : "/operator", replace: true);
+        NavigationManager.NavigateTo(AuthService.Profile.IsAdmin ? "admin" : "operator", replace: true);
     }
 }

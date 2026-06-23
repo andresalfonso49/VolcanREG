@@ -101,12 +101,12 @@
 
     private void GoToDetail(LoadRecord record)
     {
-        NavigationManager.NavigateTo($"/load/{record.ServerRecordId}");
+        NavigationManager.NavigateTo($"load/{record.ServerRecordId}");
     }
 
     private void GoToEdit(LoadRecord record)
     {
-        NavigationManager.NavigateTo($"/edit-load/{record.ServerRecordId}");
+        NavigationManager.NavigateTo($"edit-load/{record.ServerRecordId}");
     }
 
     private Task HideIncorrect()

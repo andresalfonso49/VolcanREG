@@ -20,13 +20,13 @@ public sealed class RoleGuard
 
         if (_authService.Profile is null)
         {
-            _navigationManager.NavigateTo("/login");
+            _navigationManager.NavigateTo("login");
             return false;
         }
 
         if (_authService.Profile.Role != role)
         {
-            _navigationManager.NavigateTo(_authService.Profile.IsAdmin ? "/admin" : "/operator");
+            _navigationManager.NavigateTo(_authService.Profile.IsAdmin ? "admin" : "operator");
             return false;
         }
 

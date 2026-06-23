@@ -78,11 +78,11 @@
     private async Task LogoutAsync()
     {
         await AuthService.LogoutAsync();
-        NavigationManager.NavigateTo("/login", replace: true);
+        NavigationManager.NavigateTo("login", replace: true);
     }
 
     private void GoToNewLoad()
     {
-        NavigationManager.NavigateTo("/new-load");
+        NavigationManager.NavigateTo("new-load");
     }
 }

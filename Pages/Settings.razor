@@ -87,7 +87,7 @@
         await AuthService.InitializeAsync();
         if (AuthService.Profile is null)
         {
-            NavigationManager.NavigateTo("/login");
+            NavigationManager.NavigateTo("login");
             return;
         }
 
@@ -98,7 +98,7 @@
     private async Task LogoutAsync()
     {
         await AuthService.LogoutAsync();
-        NavigationManager.NavigateTo("/login", replace: true);
+        NavigationManager.NavigateTo("login", replace: true);
     }
 
     private void StartReset()
