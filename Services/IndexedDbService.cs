@@ -49,10 +49,10 @@ public sealed class IndexedDbService
         return await _jsRuntime.InvokeAsync<LoadRecord[]>("volcanIndexedDb.getAllLoadRecords");
     }
 
-    public async Task<IReadOnlyList<LoadRecord>> GetOperatorRecordsAsync(string operatorId)
+    public async Task<IReadOnlyList<LoadRecord>> GetOperatorRecordsForDateAsync(string operatorId, DateTime date)
     {
         var records = await GetAllLoadRecordsAsync();
-        return records.Where(x => x.OperatorId == operatorId)
+        return records.Where(x => x.OperatorId == operatorId && x.LoadedAtLocal.Date == date.Date)
             .OrderByDescending(x => x.LoadedAtLocal)
             .ToArray();
     }

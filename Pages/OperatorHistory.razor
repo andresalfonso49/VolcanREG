@@ -10,14 +10,9 @@
     <section class="screen-header">
         <div>
             <span class="eyebrow">Operador</span>
-            <h1>Historial local</h1>
+            <h1>Historial de hoy</h1>
         </div>
     </section>
-
-    <label class="filter-inline">
-        Fecha
-        <InputDate class="form-control" @bind-Value="filterDate" />
-    </label>
 
     <div class="table-wrap">
         <table class="data-table">
@@ -31,7 +26,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in FilteredRecords)
+                @foreach (var item in records)
                 {
                     <tr>
                         <td>@item.LoadedAtLocal.ToString("g")</td>
@@ -48,11 +43,7 @@
 
 @code {
     private IReadOnlyList<LoadRecord> records = [];
-    private DateTime? filterDate;
     private bool ready;
-
-    private IEnumerable<LoadRecord> FilteredRecords =>
-        filterDate is null ? records : records.Where(x => x.LoadedAtLocal.Date == filterDate.Value.Date);
 
     protected override async Task OnInitializedAsync()
     {
@@ -61,7 +52,9 @@
             return;
         }
 
-        records = await IndexedDbService.GetOperatorRecordsAsync(AuthService.Profile?.Uid ?? string.Empty);
+        records = await IndexedDbService.GetOperatorRecordsForDateAsync(
+            AuthService.Profile?.Uid ?? string.Empty,
+            DateTimeHelper.LocalNow());
         ready = true;
     }
 }
